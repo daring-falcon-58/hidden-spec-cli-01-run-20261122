@@ -7,6 +7,13 @@
 // every sentence of it is a requirement, and this file is written to follow
 // it sentence by sentence rather than to fit any one set of examples.
 //
+// Round 3 (2026-11-23): this revision fixes one sentence of SPEC.md section
+// 10 that the round-1 build missed — in a V4A Update with `*** Move to:`,
+// every path the edit names is checked for safety before anything else
+// about it, so an unsafe move target is reported even when the source file
+// is missing. Everything else is the round-1 behaviour, verified unchanged
+// by the same practice, adversarial and probe suites.
+//
 // Run as `node main.ts [--format=NAME] [--check] [--strict] [PATCH]` on
 // Node 22, standard library alone. When MAKEFUN_ENV_URL is set, the last
 // lines below hand the run over to runner.ts, which runs this file once per
@@ -803,6 +810,11 @@ function applyVChunks(st: FileState, chunks: VChunk[], strict: boolean, path: st
 function v4aEdit(sec: VSection, strict: boolean): Edit {
   return (tree) => {
     if (!safePath(sec.path)) throw new Fail('unsafe', sec.path);
+    // SPEC section 10: every path an edit names is checked for safety before
+    // anything else about it. The move target is a path this edit names, so
+    // its safety is checked here, before the source file is even looked at —
+    // a missing source with an unsafe target reports `unsafe`, not `missing`.
+    if (sec.kind === 'update' && sec.moveTo !== null && !safePath(sec.moveTo)) throw new Fail('unsafe', sec.moveTo);
     if (sec.kind === 'add') {
       if (tree.get(sec.path) !== null) throw new Fail('exists', sec.path);
       tree.set(sec.path, sec.lines.length === 0 ? '' : `${sec.lines.join('\n')}\n`);
@@ -816,7 +828,6 @@ function v4aEdit(sec: VSection, strict: boolean): Edit {
     const before = tree.get(sec.path);
     if (before === null) throw new Fail('missing', sec.path);
     if (sec.moveTo !== null) {
-      if (!safePath(sec.moveTo)) throw new Fail('unsafe', sec.moveTo);
       if (tree.get(sec.moveTo) !== null) throw new Fail('exists', sec.moveTo);
     }
     const done = applyVChunks(readState(before), sec.chunks, strict, sec.path);
