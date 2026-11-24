@@ -11,8 +11,17 @@
 // 10 that the round-1 build missed — in a V4A Update with `*** Move to:`,
 // every path the edit names is checked for safety before anything else
 // about it, so an unsafe move target is reported even when the source file
-// is missing. Everything else is the round-1 behaviour, verified unchanged
-// by the same practice, adversarial and probe suites.
+// is missing.
+//
+// Round 4 (2026-11-24): this revision fixes one sentence of SPEC.md section 6
+// that the round-3 build missed — the token is `diff --git ` WITH a trailing
+// space (section 4 rule 4 and the hunk-body-end sentence both write it that
+// way, and detection already used the space). A line starting `diff --git`
+// but not `diff --git ` (bare `diff --git`, `diff --gitx`, a tab separator)
+// is not a diff --git line at all: outside a body it is ignored prose, and
+// it ends a hunk body only as any other non-body line does. Everything else
+// is the round-3 behaviour, verified unchanged by the same practice,
+// adversarial and probe suites plus the new probe4 suite.
 //
 // Run as `node main.ts [--format=NAME] [--check] [--strict] [PATCH]` on
 // Node 22, standard library alone. When MAKEFUN_ENV_URL is set, the last
@@ -369,7 +378,7 @@ function unifiedSections(lines: string[]): Section[] {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i]!;
-    if (line.startsWith('diff --git')) {
+    if (line.startsWith('diff --git ')) {
       const m = GIT_RE.exec(line);
       if (m === null) throw new Exit2(`error: parse ${i + 1}`);
       push();
@@ -404,7 +413,7 @@ function unifiedSections(lines: string[]): Section[] {
       let j = i + 1;
       while (j < lines.length) {
         const l = lines[j]!;
-        if (l.startsWith('diff --git')) break;
+        if (l.startsWith('diff --git ')) break;
         if (l.startsWith('--- ') && (lines[j + 1] ?? '').startsWith('+++ ')) break;
         if (l.startsWith(' ') || l.startsWith('-') || l.startsWith('+') || l.startsWith('\\') || l === '') {
           body.push(l);
